@@ -1,16 +1,26 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import React from 'react';
-import { useColorScheme } from 'react-native';
+import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { AppProvider } from '../context/AppContext';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
-
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+export default function RootLayout() {
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+    <AppProvider>
+      <StatusBar style="light" />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: '#1a1a1a' },
+          animation: 'slide_from_right',
+        }}
+      >
+        <Stack.Screen name="login" />
+        <Stack.Screen name="department" />
+        <Stack.Screen name="scanner" />
+        <Stack.Screen name="comment" />
+        <Stack.Screen name="review" />
+        <Stack.Screen name="submitted" />
+      </Stack>
+    </AppProvider>
   );
 }
