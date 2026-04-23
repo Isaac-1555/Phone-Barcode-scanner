@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router } from 'expo-router';
 import { useApp } from '../context/AppContext';
@@ -7,6 +7,8 @@ import { useApp } from '../context/AppContext';
 export default function ScannerScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [manualBarcode, setManualBarcode] = useState('');
   const { state } = useApp();
 
   useEffect(() => {
@@ -30,6 +32,19 @@ export default function ScannerScreen() {
     });
 
     setTimeout(() => setScanned(false), 2000);
+  };
+
+  const handleManualSubmit = () => {
+    const cleanBarcode = manualBarcode.replace(/\D/g, '');
+    if (!cleanBarcode) return;
+
+    setModalVisible(false);
+    setManualBarcode('');
+
+    router.push({
+      pathname: '/comment',
+      params: { barcode: cleanBarcode, index: state?.scannedItems.length?.toString() || '0' },
+    });
   };
 
   if (!permission) {
@@ -95,12 +110,63 @@ export default function ScannerScreen() {
         </View>
 
         <View style={styles.footer}>
+          <TouchableOpacity 
+            style={styles.typeButton}
+            onPress={() => setModalVisible(true)}
+          >
+            <Text style={styles.typeButtonText}>Type Barcode</Text>
+          </TouchableOpacity>
           <Text style={styles.scanText}>Scan Barcode</Text>
           <Text style={styles.countText}>
             {state.scannedItems.length} scanned
           </Text>
         </View>
       </View>
+
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <KeyboardAvoidingView 
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Enter Barcode</Text>
+            <Text style={styles.modalSubtitle}>
+              For produce (4011 for bananas) or illegible barcodes
+            </Text>
+            <TextInput
+              style={styles.modalInput}
+              value={manualBarcode}
+              onChangeText={setManualBarcode}
+              placeholder="Enter barcode..."
+              placeholderTextColor="#666"
+              keyboardType="numeric"
+              maxLength={14}
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={styles.modalCancelButton}
+                onPress={() => {
+                  setModalVisible(false);
+                  setManualBarcode('');
+                }}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.modalSubmitButton}
+                onPress={handleManualSubmit}
+              >
+                <Text style={styles.modalSubmitText}>Continue</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -187,6 +253,18 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: 'center',
   },
+  typeButton: {
+    backgroundColor: '#3a3a3a',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  typeButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
   scanText: {
     color: '#fff',
     fontSize: 16,
@@ -195,6 +273,72 @@ const styles = StyleSheet.create({
   countText: {
     color: '#fff',
     fontSize: 18,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 340,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#888',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  modalInput: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 18,
+    color: '#fff',
+    borderWidth: 1,
+    borderColor: '#3a3a3a',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalCancelButton: {
+    flex: 1,
+    backgroundColor: '#3a3a3a',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    color: '#888',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalSubmitButton: {
+    flex: 1,
+    backgroundColor: '#007AFF',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+  },
+  modalSubmitText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   messageText: {
     color: '#fff',
