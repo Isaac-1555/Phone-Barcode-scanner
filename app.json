@@ -12,6 +12,7 @@
       "bundleIdentifier": "com.anonymous.Phone-scanner"
     },
     "android": {
+      "package": "com.anonymous.phonescanner",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -41,6 +42,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "994dc1e3-5637-4ebb-9927-fac653477de5"
+      }
+    },
+    "owner": "isaac_judah"
   }
 }
