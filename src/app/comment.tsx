@@ -4,7 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useApp } from '../context/AppContext';
 
 export default function CommentScreen() {
-  const { barcode, index } = useLocalSearchParams<{ barcode: string; index: string }>();
+  const { barcode, index, isEdit } = useLocalSearchParams<{ barcode: string; index: string; isEdit?: string }>();
   const [comment, setComment] = useState('');
   const { state, addScannedItem, updateItemComment } = useApp();
 
@@ -16,28 +16,30 @@ export default function CommentScreen() {
     }
   }, [state]);
 
+  useEffect(() => {
+    if (isEdit === 'true' && state && state.scannedItems[itemIndex]) {
+      setComment(state.scannedItems[itemIndex].comment || '');
+    }
+  }, [isEdit, state, itemIndex]);
+
   const handleContinue = () => {
     if (!state) return;
 
-    if (itemIndex > 0 && state.scannedItems[itemIndex]) {
+    if (isEdit === 'true') {
       updateItemComment(itemIndex, comment);
+      router.replace('/review');
     } else {
       addScannedItem(barcode, comment);
+      router.replace('/scanner');
     }
-    
-    router.replace('/scanner');
   };
 
-  const handleAddComment = () => {
-    if (!state) return;
-
-    if (itemIndex > 0 && state.scannedItems[itemIndex]) {
-      updateItemComment(itemIndex, comment);
+  const handleCancel = () => {
+    if (isEdit === 'true') {
+      router.replace('/review');
     } else {
-      addScannedItem(barcode, comment);
+      router.replace('/scanner');
     }
-    
-    router.replace('/scanner');
   };
 
   if (!state) {
@@ -49,6 +51,11 @@ export default function CommentScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
+      <View style={styles.headerBar}>
+        <TouchableOpacity onPress={handleCancel} style={styles.cancelButton}>
+          <Text style={styles.cancelText}>✕</Text>
+        </TouchableOpacity>
+      </View>
       <View style={styles.content}>
         <View style={styles.header}>
           <Text style={styles.title}>Scanned Barcode</Text>
@@ -70,19 +77,11 @@ export default function CommentScreen() {
         </View>
 
         <View style={styles.buttons}>
-          <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
-            <Text style={styles.continueText}>Continue</Text>
+          <TouchableOpacity style={comment.trim() ? styles.continueButton : styles.skipButton} onPress={handleContinue}>
+            <Text style={comment.trim() ? styles.continueText : styles.skipText}>
+              {comment.trim() ? 'Continue' : 'Skip Comment'}
+            </Text>
           </TouchableOpacity>
-          
-          {comment.trim() ? (
-            <TouchableOpacity style={styles.addButton} onPress={handleAddComment}>
-              <Text style={styles.addText}>Add Comment</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity style={styles.skipButton} onPress={handleContinue}>
-              <Text style={styles.skipText}>Skip Comment</Text>
-            </TouchableOpacity>
-          )}
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -94,10 +93,24 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#1a1a1a',
   },
+  headerBar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingTop: 50,
+    paddingHorizontal: 20,
+  },
+  cancelButton: {
+    padding: 10,
+  },
+  cancelText: {
+    color: '#888',
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
   content: {
     flex: 1,
     padding: 24,
-    paddingTop: 60,
+    paddingTop: 20,
   },
   header: {
     alignItems: 'center',
@@ -149,17 +162,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   continueText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  addButton: {
-    backgroundColor: '#34C759',
-    borderRadius: 12,
-    padding: 18,
-    alignItems: 'center',
-  },
-  addText: {
     color: '#fff',
     fontSize: 18,
     fontWeight: '600',

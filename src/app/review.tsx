@@ -7,7 +7,7 @@ import { getNextListNumber, submitList } from '../services/supabase';
 export default function ReviewScreen() {
   const [loading, setLoading] = useState(false);
   const [categoryName, setCategoryName] = useState('');
-  const { state, clearScannedItems, logout } = useApp();
+  const { state, clearScannedItems, removeScannedItem } = useApp();
 
   useEffect(() => {
     if (!state) {
@@ -50,7 +50,7 @@ export default function ReviewScreen() {
       {
         text: 'Delete',
         style: 'destructive',
-        onPress: () => state && state.scannedItems.splice(index, 1),
+        onPress: () => removeScannedItem(index),
       },
     ]);
   };
@@ -83,12 +83,20 @@ export default function ReviewScreen() {
                 <Text style={styles.comment}>{item.comment}</Text>
               ) : null}
             </View>
-            <TouchableOpacity
-              style={styles.deleteButton}
-              onPress={() => handleDelete(idx)}
-            >
-              <Text style={styles.deleteText}>X</Text>
-            </TouchableOpacity>
+            <View style={styles.itemActions}>
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={() => router.push({ pathname: '/comment', params: { barcode: item.barcode, index: idx.toString(), isEdit: 'true' } })}
+              >
+                <Text style={styles.editText}>Edit</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={() => handleDelete(idx)}
+              >
+                <Text style={styles.deleteText}>X</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         ))}
       </ScrollView>
@@ -165,6 +173,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#888',
     marginTop: 4,
+  },
+  itemActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  editButton: {
+    padding: 8,
+  },
+  editText: {
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   deleteButton: {
     padding: 8,

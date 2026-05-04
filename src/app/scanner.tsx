@@ -1,15 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router } from 'expo-router';
 import { useApp } from '../context/AppContext';
+
+const departments = [
+  { name: 'Frontend', prefix: 'FE' },
+  { name: 'Produce', prefix: 'PR' },
+  { name: 'Bakery', prefix: 'BA' },
+  { name: 'Deli', prefix: 'DE' },
+  { name: 'Meat', prefix: 'ME' },
+];
 
 export default function ScannerScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
+  const [deptModalVisible, setDeptModalVisible] = useState(false);
   const [manualBarcode, setManualBarcode] = useState('');
-  const { state } = useApp();
+  const { state, setDepartment, logout } = useApp();
 
   useEffect(() => {
     if (!state) {
@@ -45,6 +54,16 @@ export default function ScannerScreen() {
       pathname: '/comment',
       params: { barcode: cleanBarcode, index: state?.scannedItems.length?.toString() || '0' },
     });
+  };
+
+  const handleSelectDept = (name: string, prefix: string) => {
+    setDepartment(name, prefix);
+    setDeptModalVisible(false);
+  };
+
+  const handleLogout = () => {
+    logout();
+    router.replace('/login');
   };
 
   if (!permission) {
@@ -93,7 +112,9 @@ export default function ScannerScreen() {
       
       <View style={styles.overlay}>
         <View style={styles.header}>
-          <Text style={styles.headerText}>{state.prefix}</Text>
+          <TouchableOpacity onPress={() => setDeptModalVisible(true)}>
+            <Text style={styles.headerText}>{state.prefix} ▼</Text>
+          </TouchableOpacity>
           <TouchableOpacity 
             style={styles.submitButton}
             onPress={() => router.push('/review')}
@@ -120,8 +141,42 @@ export default function ScannerScreen() {
           <Text style={styles.countText}>
             {state.scannedItems.length} scanned
           </Text>
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Text style={styles.logoutButtonText}>Logout</Text>
+          </TouchableOpacity>
         </View>
       </View>
+
+      <Modal
+        visible={deptModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setDeptModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Change Department</Text>
+            <ScrollView style={{ maxHeight: 300, width: '100%', marginBottom: 16 }}>
+              {departments.map((dept) => (
+                <TouchableOpacity
+                  key={dept.prefix}
+                  style={styles.deptItem}
+                  onPress={() => handleSelectDept(dept.name, dept.prefix)}
+                >
+                  <Text style={styles.deptItemText}>{dept.name}</Text>
+                  <Text style={styles.deptItemPrefix}>{dept.prefix}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <TouchableOpacity 
+              style={styles.modalCancelButton}
+              onPress={() => setDeptModalVisible(false)}
+            >
+              <Text style={styles.modalCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       <Modal
         visible={modalVisible}
@@ -274,6 +329,19 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
   },
+  logoutButton: {
+    position: 'absolute',
+    right: 20,
+    bottom: 20,
+    padding: 10,
+    backgroundColor: '#ff3b30',
+    borderRadius: 8,
+  },
+  logoutButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.8)',
@@ -287,6 +355,23 @@ const styles = StyleSheet.create({
     padding: 24,
     width: '100%',
     maxWidth: 340,
+  },
+  deptItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#3a3a3a',
+  },
+  deptItemText: {
+    color: '#fff',
+    fontSize: 18,
+  },
+  deptItemPrefix: {
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   modalTitle: {
     fontSize: 20,
