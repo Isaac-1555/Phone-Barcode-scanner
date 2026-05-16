@@ -179,6 +179,102 @@ export async function markCategoryImportant(
   }
 }
 
+export interface CategoryInfo {
+  name: string;
+  important: boolean;
+}
+
+export async function getCategories(storeId: string): Promise<CategoryInfo[]> {
+  const [barcodesRes, importantRes] = await Promise.all([
+    fetch(
+      `${SUPABASE_URL}/rest/v1/barcodes?store_id=eq.${storeId}&select=category_name&order=category_name`,
+      {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      }
+    ),
+    fetch(
+      `${SUPABASE_URL}/rest/v1/important_categories?store_id=eq.${storeId}&select=category_name`,
+      {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      }
+    ),
+  ]);
+
+  const [barcodesData, importantData] = await Promise.all([
+    barcodesRes.json().catch(() => []),
+    importantRes.json().catch(() => []),
+  ]);
+
+  const importantSet = new Set(
+    (Array.isArray(importantData) ? importantData : []).map(
+      (r: { category_name: string }) => r.category_name
+    )
+  );
+
+  const seen = new Set<string>();
+  const categories: CategoryInfo[] = [];
+
+  for (const row of Array.isArray(barcodesData) ? barcodesData : []) {
+    const name = row.category_name;
+    if (name && !seen.has(name)) {
+      seen.add(name);
+      categories.push({ name, important: importantSet.has(name) });
+    }
+  }
+
+  return categories;
+}
+
+export async function getCategoryBarcodes(
+  storeId: string,
+  categoryName: string
+): Promise<ScannedItem[]> {
+  const response = await fetch(
+    `${SUPABASE_URL}/rest/v1/barcodes?store_id=eq.${storeId}&category_name=eq.${encodeURIComponent(categoryName)}&select=barcode_value,created_at&order=created_at`,
+    {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+    }
+  );
+
+  const data = await response.json().catch(() => []);
+
+  const items: ScannedItem[] = [];
+  for (const row of Array.isArray(data) ? data : []) {
+    if (row.barcode_value) {
+      items.push({ barcode: row.barcode_value, comment: '' });
+    }
+  }
+
+  const commentsResponse = await fetch(
+    `${SUPABASE_URL}/rest/v1/barcode_comments?store_id=eq.${storeId}&select=barcode_value,comment`,
+    {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+    }
+  );
+  const commentsData = await commentsResponse.json().catch(() => []);
+  const commentMap: Record<string, string> = {};
+  for (const row of Array.isArray(commentsData) ? commentsData : []) {
+    if (row.comment) commentMap[row.barcode_value] = row.comment;
+  }
+
+  return items.map((item) => ({
+    ...item,
+    comment: commentMap[item.barcode] || '',
+  }));
+}
+
 export async function saveComment(storeId: string, barcodeValue: string, comment: string): Promise<void> {
   const truncated = comment.slice(0, 250);
 

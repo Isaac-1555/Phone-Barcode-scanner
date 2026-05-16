@@ -107,9 +107,9 @@ export default function ScannerScreen() {
     if (!state) router.replace('/login');
   }, [state]);
 
-  const navigateToComment = useCallback((barcode: string) => {
+  const navigateToComment = useCallback((barcode: string, isManual = false) => {
     const cleanBarcode = barcode.replace(/\D/g, '');
-    const finalBarcode = cleanBarcode.length > 1
+    const finalBarcode = !isManual && cleanBarcode.length > 1
       ? cleanBarcode.slice(0, -1)
       : cleanBarcode;
 
@@ -170,7 +170,7 @@ export default function ScannerScreen() {
     if (!manualBarcode.trim()) return;
     setShowBarcodeModal(false);
     setManualBarcode('');
-    navigateToComment(manualBarcode.trim());
+    navigateToComment(manualBarcode.trim(), true);
   }
 
   function handleSelectDepartment(name: string, prefix: string) {

@@ -1,23 +1,23 @@
 import { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useApp } from '../context/AppContext';
 import { Brute } from '../constants/theme';
 import { CircleCheckBig } from 'lucide-react-native';
 import { ScanSpinner } from '../components/Spinner';
 
 export default function SubmittedScreen() {
-  const { clearScannedItems, state } = useApp();
+  const { clearScannedItems } = useApp();
+  const { important } = useLocalSearchParams<{ important: string }>();
+  const isImportant = important === 'true';
 
   useEffect(() => {
     const timer = setTimeout(() => {
       clearScannedItems();
-      router.replace('/scanner');
+      router.replace('/department');
     }, 2000);
     return () => clearTimeout(timer);
   }, [clearScannedItems]);
-
-  const isImportant = (state?.scannedItems?.length ?? 0) > 5;
 
   return (
     <View style={styles.container}>

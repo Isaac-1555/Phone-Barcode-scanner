@@ -50,7 +50,7 @@ export default function ReviewScreen() {
       if (isImportant) {
         await markCategoryImportant(s.storeId, categoryName, true);
       }
-      router.replace('/submitted');
+      router.replace({ pathname: '/submitted', params: { important: isImportant ? 'true' : 'false' } });
     } catch (err: unknown) {
       Alert.alert('Error', err instanceof Error ? err.message : 'Submit failed');
       setSubmitting(false);
