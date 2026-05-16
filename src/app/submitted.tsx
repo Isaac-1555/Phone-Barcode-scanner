@@ -1,32 +1,40 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router } from 'expo-router';
 import { useApp } from '../context/AppContext';
+import { Brute } from '../constants/theme';
+import { CircleCheckBig } from 'lucide-react-native';
+import { ScanSpinner } from '../components/Spinner';
 
 export default function SubmittedScreen() {
-  const { isImportant } = useLocalSearchParams<{ isImportant?: string }>();
-  const { state, clearScannedItems } = useApp();
+  const { clearScannedItems, state } = useApp();
 
   useEffect(() => {
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       clearScannedItems();
       router.replace('/scanner');
     }, 2000);
-  }, []);
+    return () => clearTimeout(timer);
+  }, [clearScannedItems]);
 
-  if (!state) {
-    router.replace('/login');
-    return null;
-  }
+  const isImportant = (state?.scannedItems?.length ?? 0) > 5;
 
   return (
     <View style={styles.container}>
-      <Text style={styles.checkmark}>✓</Text>
-      <Text style={styles.title}>Submitted Successfully</Text>
-      {isImportant === 'true' && (
-        <Text style={styles.importantBadge}>✦ Marked as important</Text>
+      <CircleCheckBig size={80} color={Brute.success} strokeWidth={1.5} />
+      <Text style={styles.title}>Submitted</Text>
+      <Text style={styles.subtitle}>List sent successfully</Text>
+
+      {isImportant && (
+        <View style={styles.importantBadge}>
+          <Text style={styles.importantText}>Marked as important</Text>
+        </View>
       )}
-      <Text style={styles.subtitle}>Redirecting to scanner...</Text>
+
+      <View style={styles.spinnerRow}>
+        <ScanSpinner size={16} color={Brute.muted} />
+        <Text style={styles.redirect}>Redirecting to scanner...</Text>
+      </View>
     </View>
   );
 }
@@ -34,31 +42,43 @@ export default function SubmittedScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
-    justifyContent: 'center',
+    backgroundColor: Brute.base,
     alignItems: 'center',
+    justifyContent: 'center',
     padding: 24,
-  },
-  checkmark: {
-    fontSize: 80,
-    color: '#34C759',
-    marginBottom: 24,
+    gap: 12,
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 12,
+    fontWeight: '700',
+    color: Brute.text,
   },
   subtitle: {
     fontSize: 16,
-    color: '#888',
+    color: Brute.muted,
   },
   importantBadge: {
-    fontSize: 18,
-    color: '#f87171',
+    marginTop: 8,
+    borderWidth: Brute.borderW,
+    borderColor: Brute.accent,
+    borderRadius: Brute.radius,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: Brute.surface,
+  },
+  importantText: {
+    fontSize: 16,
     fontWeight: '600',
-    marginBottom: 12,
-    marginTop: 4,
+    color: Brute.accent,
+  },
+  spinnerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 32,
+  },
+  redirect: {
+    fontSize: 14,
+    color: Brute.muted,
   },
 });

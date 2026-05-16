@@ -1,4 +1,8 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import * as SecureStore from 'expo-secure-store';
+
+const STORE_NUMBER_KEY = 'store_number';
+const STORE_ID_KEY = 'store_id';
 
 export interface ScannedItem {
   barcode: string;
@@ -15,21 +19,51 @@ export interface AppState {
 
 interface AppContextType {
   state: AppState | null;
-  login: (storeNumber: string, storeId: string) => void;
+  loading: boolean;
+  login: (storeNumber: string, storeId: string) => Promise<void>;
   setDepartment: (department: string, prefix: string) => void;
   addScannedItem: (barcode: string, comment?: string) => void;
   updateItemComment: (index: number, comment: string) => void;
   removeScannedItem: (index: number) => void;
   clearScannedItems: () => void;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AppState | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const login = useCallback((storeNumber: string, storeId: string) => {
+  useEffect(() => {
+    (async () => {
+      try {
+        const [storeNumber, storeId] = await Promise.all([
+          SecureStore.getItemAsync(STORE_NUMBER_KEY),
+          SecureStore.getItemAsync(STORE_ID_KEY),
+        ]);
+        if (storeNumber && storeId) {
+          setState({
+            storeNumber,
+            storeId,
+            department: '',
+            prefix: '',
+            scannedItems: [],
+          });
+        }
+      } catch {
+        // Failed to read - start fresh
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const login = useCallback(async (storeNumber: string, storeId: string) => {
+    await Promise.all([
+      SecureStore.setItemAsync(STORE_NUMBER_KEY, storeNumber),
+      SecureStore.setItemAsync(STORE_ID_KEY, storeId),
+    ]);
     setState({
       storeNumber,
       storeId,
@@ -74,7 +108,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setState((prev) => (prev ? { ...prev, scannedItems: [] } : null));
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    await Promise.all([
+      SecureStore.deleteItemAsync(STORE_NUMBER_KEY),
+      SecureStore.deleteItemAsync(STORE_ID_KEY),
+    ]);
     setState(null);
   }, []);
 
@@ -82,6 +120,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     <AppContext.Provider
       value={{
         state,
+        loading,
         login,
         setDepartment,
         addScannedItem,

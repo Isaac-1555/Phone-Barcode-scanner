@@ -2,6 +2,7 @@ import React from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { AppProvider } from '../context/AppContext';
+import { Brute } from '../constants/theme';
 
 export default function RootLayout() {
   return (
@@ -10,8 +11,8 @@ export default function RootLayout() {
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: '#1a1a1a' },
-          animation: 'slide_from_right',
+          contentStyle: { backgroundColor: Brute.base },
+          animation: 'fade',
         }}
       >
         <Stack.Screen name="login" />

@@ -1,7 +1,8 @@
-import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { useApp } from '../context/AppContext';
+import { Brute } from '../constants/theme';
+import { ChevronRight, Store } from 'lucide-react-native';
 
 const departments = [
   { name: 'Frontend', prefix: 'FE' },
@@ -14,32 +15,39 @@ const departments = [
 export default function DepartmentScreen() {
   const { state, setDepartment } = useApp();
 
-  const handleSelect = (name: string, prefix: string) => {
-    setDepartment(name, prefix);
-    router.replace('/scanner');
-  };
-
   if (!state) {
     router.replace('/login');
     return null;
   }
 
+  function handleSelect(name: string, prefix: string) {
+    setDepartment(name, prefix);
+    router.replace('/scanner');
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
+        <Store size={28} color={Brute.accent} strokeWidth={2} />
         <Text style={styles.title}>Select Department</Text>
-        <Text style={styles.subtitle}>Store: {state.storeNumber}</Text>
+        <Text style={styles.subtitle}>Store #{state.storeNumber}</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.list}>
+      <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
         {departments.map((dept) => (
           <TouchableOpacity
             key={dept.prefix}
             style={styles.card}
             onPress={() => handleSelect(dept.name, dept.prefix)}
+            activeOpacity={0.85}
           >
-            <Text style={styles.cardText}>{dept.name}</Text>
-            <Text style={styles.cardPrefix}>{dept.prefix}</Text>
+            <View style={styles.cardLeft}>
+              <Text style={styles.cardText}>{dept.name}</Text>
+              <View style={styles.badge}>
+                <Text style={styles.cardPrefix}>{dept.prefix}</Text>
+              </View>
+            </View>
+            <ChevronRight size={24} color={Brute.muted} strokeWidth={2.5} />
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -50,43 +58,69 @@ export default function DepartmentScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Brute.base,
   },
   header: {
-    padding: 24,
     paddingTop: 60,
+    paddingBottom: 24,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    gap: 8,
+    borderBottomWidth: Brute.borderW,
+    borderBottomColor: Brute.border,
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
+    fontWeight: '700',
+    color: Brute.text,
   },
   subtitle: {
     fontSize: 16,
-    color: '#888',
+    color: Brute.muted,
   },
   list: {
+    flex: 1,
+  },
+  listContent: {
     padding: 24,
-    paddingTop: 0,
+    gap: 12,
   },
   card: {
-    backgroundColor: '#2a2a2a',
-    borderRadius: 16,
+    backgroundColor: Brute.surface,
+    borderWidth: Brute.borderW,
+    borderColor: Brute.border,
+    borderRadius: Brute.radius,
     padding: 20,
-    marginBottom: 16,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 0,
+    elevation: 6,
+  },
+  cardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   cardText: {
     fontSize: 20,
-    color: '#fff',
-    fontWeight: '500',
+    fontWeight: '600',
+    color: Brute.text,
+  },
+  badge: {
+    backgroundColor: Brute.base,
+    borderWidth: Brute.borderW,
+    borderColor: Brute.accent,
+    borderRadius: Brute.radius,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
   cardPrefix: {
-    fontSize: 18,
-    color: '#007AFF',
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
+    color: Brute.accent,
   },
 });

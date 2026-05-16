@@ -1,88 +1,104 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useApp } from '../context/AppContext';
+import { Brute } from '../constants/theme';
+import { X, ArrowRight, SkipForward } from 'lucide-react-native';
+
+const MAX_COMMENT = 250;
 
 export default function CommentScreen() {
-  const { barcode, index, isEdit } = useLocalSearchParams<{ barcode: string; index: string; isEdit?: string }>();
+  const { barcode, index, isEdit } = useLocalSearchParams<{
+    barcode: string;
+    index: string;
+    isEdit?: string;
+  }>();
+  const { addScannedItem, removeScannedItem, updateItemComment, state } = useApp();
   const [comment, setComment] = useState('');
-  const { state, addScannedItem, updateItemComment } = useApp();
 
-  const itemIndex = parseInt(index || '0', 10);
-
-  useEffect(() => {
-    if (!state) {
-      router.replace('/login');
+  function handleCancel() {
+    if (isEdit === 'true' && barcode && index !== undefined) {
+      router.back();
+    } else if (barcode) {
+      removeScannedItem(Number(index));
+      router.back();
+    } else {
+      router.back();
     }
-  }, [state]);
+  }
 
-  useEffect(() => {
-    if (isEdit === 'true' && state && state.scannedItems[itemIndex]) {
-      setComment(state.scannedItems[itemIndex].comment || '');
-    }
-  }, [isEdit, state, itemIndex]);
-
-  const handleContinue = () => {
-    if (!state) return;
+  function handleContinue() {
+    if (!barcode) return;
 
     if (isEdit === 'true') {
-      updateItemComment(itemIndex, comment);
-      router.replace('/review');
+      updateItemComment(Number(index), comment);
+      router.back();
     } else {
       addScannedItem(barcode, comment);
       router.replace('/scanner');
     }
-  };
-
-  const handleCancel = () => {
-    if (isEdit === 'true') {
-      router.replace('/review');
-    } else {
-      router.replace('/scanner');
-    }
-  };
-
-  if (!state) {
-    return null;
   }
+
+  const isSkip = !comment.trim();
+  const itemCount = state?.scannedItems.length ?? 0;
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.headerBar}>
-        <TouchableOpacity onPress={handleCancel} style={styles.cancelButton}>
-          <Text style={styles.cancelText}>✕</Text>
-        </TouchableOpacity>
-      </View>
       <View style={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.title}>Scanned Barcode</Text>
-          <Text style={styles.barcode}>{barcode}</Text>
-        </View>
-
-        <View style={styles.inputSection}>
-          <Text style={styles.label}>Add Comment (optional)</Text>
-          <TextInput
-            style={styles.input}
-            value={comment}
-            onChangeText={setComment}
-            placeholder="Enter comment..."
-            placeholderTextColor="#666"
-            multiline
-            maxLength={250}
-          />
-          <Text style={styles.charCount}>{comment.length}/250</Text>
-        </View>
-
-        <View style={styles.buttons}>
-          <TouchableOpacity style={comment.trim() ? styles.continueButton : styles.skipButton} onPress={handleContinue}>
-            <Text style={comment.trim() ? styles.continueText : styles.skipText}>
-              {comment.trim() ? 'Continue' : 'Skip Comment'}
-            </Text>
+          <TouchableOpacity onPress={handleCancel} style={styles.cancelBtn} activeOpacity={0.7}>
+            <X size={24} color={Brute.muted} strokeWidth={3} />
           </TouchableOpacity>
+          <Text style={styles.headerTitle}>Add Comment</Text>
+          <View style={styles.cancelBtn} />
         </View>
+
+        <Text style={styles.label}>Scanned Barcode</Text>
+        <Text style={styles.barcode}>{barcode ?? '---'}</Text>
+
+        <Text style={styles.label}>Comment (optional)</Text>
+        <TextInput
+          style={styles.input}
+          value={comment}
+          onChangeText={setComment}
+          placeholder="Type a note for this item..."
+          placeholderTextColor={Brute.muted}
+          multiline
+          maxLength={MAX_COMMENT}
+          textAlignVertical="top"
+        />
+        <Text style={styles.charCount}>{comment.length}/{MAX_COMMENT}</Text>
+
+        <TouchableOpacity
+          style={[styles.button, isSkip ? styles.skipButton : styles.continueButton]}
+          onPress={handleContinue}
+          activeOpacity={0.85}
+        >
+          {isSkip ? (
+            <>
+              <SkipForward size={20} color={Brute.text} strokeWidth={2.5} />
+              <Text style={styles.buttonText}>Skip Comment</Text>
+            </>
+          ) : (
+            <>
+              <ArrowRight size={20} color={Brute.text} strokeWidth={2.5} />
+              <Text style={styles.buttonText}>Continue</Text>
+            </>
+          )}
+        </TouchableOpacity>
+
+        <Text style={styles.count}>Items scanned: {itemCount}</Text>
       </View>
     </KeyboardAvoidingView>
   );
@@ -91,90 +107,94 @@ export default function CommentScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
-  },
-  headerBar: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingTop: 50,
-    paddingHorizontal: 20,
-  },
-  cancelButton: {
-    padding: 10,
-  },
-  cancelText: {
-    color: '#888',
-    fontSize: 24,
-    fontWeight: 'bold',
+    backgroundColor: Brute.base,
   },
   content: {
     flex: 1,
     padding: 24,
-    paddingTop: 20,
+    paddingTop: 60,
   },
   header: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 32,
   },
-  title: {
+  cancelBtn: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
     fontSize: 18,
-    color: '#888',
-    marginBottom: 12,
-  },
-  barcode: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
-    letterSpacing: 2,
-  },
-  inputSection: {
-    marginBottom: 32,
+    fontWeight: '700',
+    color: Brute.text,
   },
   label: {
     fontSize: 14,
-    color: '#aaa',
-    marginBottom: 12,
+    fontWeight: '600',
+    color: Brute.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  barcode: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: Brute.text,
+    letterSpacing: 2,
+    marginBottom: 32,
   },
   input: {
-    backgroundColor: '#2a2a2a',
-    borderRadius: 12,
+    backgroundColor: Brute.surface,
+    borderWidth: Brute.borderW,
+    borderColor: Brute.border,
+    borderRadius: Brute.radius,
     padding: 16,
     fontSize: 16,
-    color: '#fff',
-    borderWidth: 1,
-    borderColor: '#3a3a3a',
-    minHeight: 100,
-    textAlignVertical: 'top',
+    color: Brute.text,
+    minHeight: 120,
+    fontFamily: Platform.OS === 'ios' ? 'system-ui' : 'normal',
   },
   charCount: {
     fontSize: 12,
-    color: '#666',
+    color: Brute.muted,
     textAlign: 'right',
-    marginTop: 8,
+    marginTop: 6,
+    marginBottom: 24,
   },
-  buttons: {
-    gap: 12,
-  },
-  continueButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 12,
+  button: {
+    borderWidth: Brute.borderW,
+    borderRadius: Brute.radius,
     padding: 18,
     alignItems: 'center',
-  },
-  continueText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 0,
+    elevation: 6,
   },
   skipButton: {
-    backgroundColor: '#3a3a3a',
-    borderRadius: 12,
-    padding: 18,
-    alignItems: 'center',
+    backgroundColor: Brute.surface,
+    borderColor: Brute.border,
   },
-  skipText: {
-    color: '#888',
+  continueButton: {
+    backgroundColor: Brute.accent,
+    borderColor: Brute.accent,
+  },
+  buttonText: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: Brute.text,
+  },
+  count: {
+    fontSize: 14,
+    color: Brute.muted,
+    textAlign: 'center',
+    marginTop: 16,
   },
 });
