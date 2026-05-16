@@ -143,6 +143,42 @@ export async function submitList(storeId: string, categoryName: string, barcodes
   return true;
 }
 
+export async function markCategoryImportant(
+  storeId: string,
+  categoryName: string,
+  isImportant: boolean
+): Promise<void> {
+  if (isImportant) {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/important_categories`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify({
+        store_id: storeId,
+        category_name: categoryName,
+      }),
+    });
+    if (!response.ok && response.status !== 409) {
+      throw new Error('Failed to mark list as important');
+    }
+  } else {
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/important_categories?store_id=eq.${storeId}&category_name=eq.${encodeURIComponent(categoryName)}`,
+      {
+        method: 'DELETE',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      }
+    );
+  }
+}
+
 export async function saveComment(storeId: string, barcodeValue: string, comment: string): Promise<void> {
   const truncated = comment.slice(0, 250);
 
