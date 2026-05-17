@@ -182,10 +182,11 @@ export async function markCategoryImportant(
 export interface CategoryInfo {
   name: string;
   important: boolean;
+  opened: boolean;
 }
 
 export async function getCategories(storeId: string): Promise<CategoryInfo[]> {
-  const [barcodesRes, importantRes] = await Promise.all([
+  const [barcodesRes, importantRes, openedRes] = await Promise.all([
     fetch(
       `${SUPABASE_URL}/rest/v1/barcodes?store_id=eq.${storeId}&select=category_name&order=category_name`,
       {
@@ -204,16 +205,32 @@ export async function getCategories(storeId: string): Promise<CategoryInfo[]> {
         },
       }
     ),
+    fetch(
+      `${SUPABASE_URL}/rest/v1/opened_categories?store_id=eq.${storeId}&select=category_name`,
+      {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      }
+    ),
   ]);
 
-  const [barcodesData, importantData] = await Promise.all([
+  const [barcodesData, importantData, openedData] = await Promise.all([
     barcodesRes.json().catch(() => []),
     importantRes.json().catch(() => []),
+    openedRes.json().catch(() => []),
   ]);
 
   const importantSet = new Set(
     (Array.isArray(importantData) ? importantData : []).map(
-      (r: { category_name: string }) => r.category_name
+      (r: { category_name: string }) => r.category_name.trim()
+    )
+  );
+
+  const openedSet = new Set(
+    (Array.isArray(openedData) ? openedData : []).map(
+      (r: { category_name: string }) => r.category_name.trim()
     )
   );
 
@@ -221,14 +238,38 @@ export async function getCategories(storeId: string): Promise<CategoryInfo[]> {
   const categories: CategoryInfo[] = [];
 
   for (const row of Array.isArray(barcodesData) ? barcodesData : []) {
-    const name = row.category_name;
+    const name = row.category_name?.trim();
     if (name && !seen.has(name)) {
       seen.add(name);
-      categories.push({ name, important: importantSet.has(name) });
+      categories.push({
+        name,
+        important: importantSet.has(name),
+        opened: openedSet.has(name),
+      });
     }
   }
 
   return categories;
+}
+
+export async function markCategoryOpened(storeId: string, categoryName: string): Promise<void> {
+  await fetch(
+    `${SUPABASE_URL}/rest/v1/opened_categories?on_conflict=store_id,category_name`,
+    {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates',
+      },
+      body: JSON.stringify({
+        store_id: storeId,
+        category_name: categoryName,
+        opened_at: new Date().toISOString(),
+      }),
+    }
+  );
 }
 
 export async function getCategoryBarcodes(

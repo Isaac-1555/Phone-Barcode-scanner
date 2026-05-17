@@ -10,10 +10,9 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
 import { useApp } from '../context/AppContext';
 import { Brute } from '../constants/theme';
-import { getCategories, getCategoryBarcodes, type CategoryInfo, type ScannedItem } from '../services/supabase';
+import { getCategories, getCategoryBarcodes, markCategoryOpened, type CategoryInfo, type ScannedItem } from '../services/supabase';
 import {
   ChevronRight,
   Plus,
@@ -22,7 +21,7 @@ import {
   X,
 } from 'lucide-react-native';
 
-const UNOPENED_KEY = 'opened_categories';
+const POLL_INTERVAL = 30000;
 
 const departments = [
   { name: 'Frontend', prefix: 'FE' },
@@ -67,69 +66,36 @@ function GlowCard({ children, glowColor, style }: {
   );
 }
 
-const loadUnopened = async (storeId: string): Promise<Set<string>> => {
-  try {
-    const raw = await SecureStore.getItemAsync(`${UNOPENED_KEY}_${storeId}`);
-    if (raw) return new Set(JSON.parse(raw));
-  } catch {}
-  return new Set();
-};
-
-const saveUnopened = async (storeId: string, updated: Set<string>) => {
-  try {
-    await SecureStore.setItemAsync(
-      `${UNOPENED_KEY}_${storeId}`,
-      JSON.stringify([...updated])
-    );
-  } catch {}
-};
-
 export default function DepartmentScreen() {
   const { state, setDepartment } = useApp();
   const [categories, setCategories] = useState<CategoryInfo[]>([]);
-  const [unopened, setUnopened] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [showCatModal, setShowCatModal] = useState(false);
   const [showDeptPicker, setShowDeptPicker] = useState(false);
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
   const [catBarcodes, setCatBarcodes] = useState<ScannedItem[]>([]);
 
+  const fetchCategories = useCallback(async (storeId: string) => {
+    try {
+      const cats = await getCategories(storeId);
+      setCategories(cats);
+    } catch {}
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       const storeId = state?.storeId;
       if (!storeId) return;
-      (async () => {
-        const saved = await loadUnopened(storeId);
-        setUnopened(saved);
 
-        setLoading(true);
-        try {
-          const cats = await getCategories(storeId);
-          setCategories(cats);
+      setLoading(true);
+      fetchCategories(storeId).finally(() => setLoading(false));
 
-          const merged = new Set(saved);
-          let changed = false;
-          for (const cat of cats) {
-            if (!merged.has(cat.name)) {
-              merged.add(cat.name);
-              changed = true;
-            }
-          }
-          for (const name of merged) {
-            if (!cats.some((c) => c.name === name)) {
-              merged.delete(name);
-              changed = true;
-            }
-          }
-          if (changed) {
-            setUnopened(new Set(merged));
-            saveUnopened(storeId, merged);
-          }
-        } catch {} finally {
-          setLoading(false);
-        }
-      })();
-    }, [state?.storeId])
+      const interval = setInterval(() => {
+        fetchCategories(storeId);
+      }, POLL_INTERVAL);
+
+      return () => clearInterval(interval);
+    }, [state?.storeId, fetchCategories])
   );
 
   if (!state) {
@@ -138,17 +104,20 @@ export default function DepartmentScreen() {
   }
 
   async function openCategory(name: string) {
-    const updated = new Set(unopened);
-    updated.delete(name);
-    setUnopened(updated);
-    saveUnopened(state.storeId, updated);
+    const storeId = state?.storeId;
+    if (!storeId) return;
+
+    setCategories((prev) =>
+      prev.map((c) => (c.name === name ? { ...c, opened: true } : c))
+    );
+    markCategoryOpened(storeId, name);
 
     setSelectedCat(name);
     setCatBarcodes([]);
     setShowCatModal(true);
 
     try {
-      const barcodes = await getCategoryBarcodes(state.storeId, name);
+      const barcodes = await getCategoryBarcodes(storeId, name);
       setCatBarcodes(barcodes);
     } catch {}
   }
@@ -161,7 +130,7 @@ export default function DepartmentScreen() {
 
   function getGlowColor(cat: CategoryInfo): string | null {
     if (cat.important) return Brute.danger;
-    if (unopened.has(cat.name)) return Brute.success;
+    if (!cat.opened) return Brute.success;
     return null;
   }
 
@@ -210,14 +179,14 @@ export default function DepartmentScreen() {
                     <View style={[
                       styles.glowDot,
                       cat.important && styles.glowDotImportant,
-                      !cat.important && unopened.has(cat.name) && styles.glowDotNew,
+                      !cat.important && !cat.opened && styles.glowDotNew,
                     ]} />
                     <View>
                       <Text style={styles.cardText}>{cat.name}</Text>
                       {cat.important && (
                         <Text style={styles.impLabel}>Important</Text>
                       )}
-                      {!cat.important && unopened.has(cat.name) && (
+                      {!cat.important && !cat.opened && (
                         <Text style={styles.newLabel}>New</Text>
                       )}
                     </View>
